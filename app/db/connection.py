@@ -1,5 +1,7 @@
+# app/db/connection.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
 
 # Локальная sqlite база в корне проекта
 DB_URL = "sqlite:///./wlb.db"
@@ -10,8 +12,11 @@ engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 # SessionLocal — фабрика сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Контекстный менеджер для закрытия сессии 
+@contextmanager
 def get_session():
-    """
-    Возвращает новую сессию. Вызовите и закройте в finally/with.
-    """
-    return SessionLocal()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
