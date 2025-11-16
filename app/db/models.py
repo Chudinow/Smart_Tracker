@@ -73,7 +73,7 @@ class MoodEntry(Base):
     mood_score = Column(Integer, nullable=True)       # например 1..10 или None
     text_note = Column(Text, nullable=True)
     sentiment_label = Column(String, nullable=True)   # positive/neutral/negative
-    sentiment_confidence = Column(Float, nullable=True)
+    sentiment_confidence = Column(Float, nullable=True) # насколько сильно модель уверена в ответе, можно убрать при необходимости
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     owner = relationship("User", back_populates="mood_entries")
