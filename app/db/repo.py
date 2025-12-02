@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from .connection import get_session
 from .models import User, Habit, HabitLog, MoodEntry
+from collections import defaultdict
 
 # ----- UTILS ---------
 
@@ -26,6 +27,64 @@ def get_user_habits(user_id: int) -> list[Habit]:
 def get_user_by_username(username: str) -> Optional[User]:
     with get_session() as db:
         return db.query(User).filter(User.username == username).first()
+
+# Получить всех пользователей
+def get_all_users() -> list[User]:
+    with get_session() as db:
+        return db.query(User).all()
+
+# Получить все привычки
+def get_all_habits() -> list[Habit]:
+    with get_session() as db:
+        return db.query(Habit).all()
+
+def get_daily_state_for_user(user_id: int, day: date):
+    """Вернуть привычки пользователя + их лог на конкретный день."""
+    with get_session() as db:
+        habits = (
+            db.query(Habit)
+            .filter(Habit.user_id == user_id, Habit.is_active == True)
+            .all()
+        )
+
+        logs = (
+            db.query(HabitLog)
+            .filter(
+                HabitLog.user_id == user_id,
+                HabitLog.date == day,
+            )
+            .all()
+        )
+        logs_by_habit = {log.habit_id: log for log in logs}
+
+        result = []
+        for h in habits:
+            result.append(
+                {
+                    "habit_id": h.id,
+                    "habit_name": h.name,
+                    "description": h.description,
+                    "completed": logs_by_habit.get(h.id).completed
+                    if h.id in logs_by_habit
+                    else False,
+                    "value": logs_by_habit.get(h.id).value if h.id in logs_by_habit else None,
+                }
+            )
+        return result
+
+def get_mood_stats(user_id: int, start: date, end: date):
+    entries = get_mood_entries(user_id, start, end)
+    if not entries:
+        return {"entries": [], "avg_score": None}
+
+    scores = [e.mood_score for e in entries if e.mood_score is not None]
+    avg_score = sum(scores) / len(scores) if scores else None
+
+    return {
+        "entries": entries,
+        "avg_score": avg_score,
+    }
+
 
 # ----- USER REPO ---------
 
@@ -111,6 +170,40 @@ def add_habit_log_safe(habit_id: int, day: date, completed: bool,
         db.refresh(new)
         return new
 
+def update_habit(
+    habit_id: int,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    frequency: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> Habit:
+    with get_session() as db:
+        habit = db.query(Habit).get(habit_id)
+        if not habit:
+            raise ValueError("Habit not found")
+
+        if name is not None:
+            habit.name = name
+        if description is not None:
+            habit.description = description
+        if frequency is not None:
+            habit.frequency = frequency
+        if is_active is not None:
+            habit.is_active = is_active
+
+        db.commit()
+        db.refresh(habit)
+        return habit
+
+def delete_habit(habit_id: int) -> None:
+    with get_session() as db:
+        habit = db.query(Habit).get(habit_id)
+        if not habit:
+            return
+        db.delete(habit)
+        db.commit()
+
+
 # ЧТЕНИЕ ЛОГОВ ПРИВЫЧЕК
 
 def get_logs_for_habit(habit_id: int,
@@ -143,19 +236,37 @@ def get_logs_for_user(user_id: int,
 # MOOD ENTRY REPO
 # ------------------------
 
-def create_mood_entry(user_id: int,
+# app/db/repo.py
+
+def upsert_mood_entry(user_id: int,
                       day: date,
                       mood_score: Optional[int] = None,
                       text_note: Optional[str] = None) -> MoodEntry:
-    """Создать запись настроения пользователя за день."""
+    """
+    Создать или обновить запись настроения пользователя за день.
+    Гарантирует одну запись настроения на (user_id, date).
+    """
     with get_session() as db:
-        entry = MoodEntry(
-            user_id=user_id,
-            date=day,
-            mood_score=mood_score,
-            text_note=text_note,
+        entry = (
+            db.query(MoodEntry)
+            .filter(MoodEntry.user_id == user_id, MoodEntry.date == day)
+            .first()
         )
-        db.add(entry)
+
+        if entry:
+            # обновляем существующую
+            entry.mood_score = mood_score
+            entry.text_note = text_note
+        else:
+            # создаём новую
+            entry = MoodEntry(
+                user_id=user_id,
+                date=day,
+                mood_score=mood_score,
+                text_note=text_note,
+            )
+            db.add(entry)
+
         db.commit()
         db.refresh(entry)
         return entry

@@ -62,11 +62,17 @@ class HabitLog(Base):
     habit = relationship("Habit", back_populates="logs")
 
     def __repr__(self):
-        return f"<HabitLog id={self.id} habit_id={self.habit_id} date={self.date} completed={self.completed}>"
+        return f"<HabitLog id={self.id} habit_id={self.habit_id} date={self.date} completed={self.completed} note={self.note}>"
 
 # ---------- MoodEntry ----------
 class MoodEntry(Base):
     __tablename__ = "mood_entries"
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', name='uq_mood_user_date'),
+        Index('ix_mood_user_date', 'user_id', 'date'),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(Date, nullable=False)               # день, к которому относится настроение

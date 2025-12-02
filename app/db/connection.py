@@ -1,6 +1,6 @@
 # app/db/connection.py
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
 # Локальная sqlite база в корне проекта
@@ -11,6 +11,8 @@ engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 
 # SessionLocal — фабрика сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
 
 # Контекстный менеджер для закрытия сессии 
 @contextmanager
