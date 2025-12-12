@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Work Life Balance — Регистрация</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="wlb-auth-body">
+<div class="wlb-auth-shell">
+    <div class="wlb-auth-inner">
+
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
+        <div class="wlb-auth-panel">
+            <div class="wlb-auth-panel-title">
+                Work Life Balance
+            </div>
+            <div class="wlb-auth-panel-sub">
+                Помощник, который поможет разложить учёбу, работу и личную жизнь по полочкам.
+            </div>
+
+            <div class="wlb-auth-mode-tabs">
+                <a href="/login" class="wlb-auth-mode-tab">Вход</a>
+                <a href="/register" class="wlb-auth-mode-tab active">Регистрация</a>
+            </div>
+
+            {% if error %}
+                <div class="wlb-auth-alert error">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="post" class="wlb-auth-form">
+                <label class="wlb-auth-label">
+                    Логин
+                    <input class="wlb-auth-input"
+                           type="text"
+                           name="username"
+                           placeholder="Придумайте логин"
+                           required>
+                </label>
+
+                <label class="wlb-auth-label">
+                    Отображаемое имя
+                    <input class="wlb-auth-input"
+                           type="text"
+                           name="display_name"
+                           placeholder="Как к вам обращаться (необязательно)">
+                </label>
+
+                <label class="wlb-auth-label">
+                    Пароль
+                    <input class="wlb-auth-input"
+                           type="password"
+                           name="password"
+                           placeholder="Придумайте пароль"
+                           required>
+                </label>
+
+                <label class="wlb-auth-label">
+                    Повтор пароля
+                    <input class="wlb-auth-input"
+                           type="password"
+                           name="password2"
+                           placeholder="Повторите пароль"
+                           required>
+                </label>
+
+                <button type="submit" class="wlb-auth-submit">
+                    Зарегистрироваться
+                </button>
+            </form>
+        </div>
+
+        <!-- ПРАВАЯ КАРТОЧКА -->
+        <div class="wlb-auth-hero-wrapper">
+            <img src="https://i.ibb.co/wrw0Qngb/work-life-balance-main.png"
+                 alt="Work Life Balance">
+        </div>
+
+    </div>
+</div>
+</body>
+</html>
