@@ -64,10 +64,11 @@ def get_daily_state_for_user(user_id: int, day: date):
                     "habit_id": h.id,
                     "habit_name": h.name,
                     "description": h.description,
-                    "completed": logs_by_habit.get(h.id).completed
-                    if h.id in logs_by_habit
-                    else False,
-                    "value": logs_by_habit.get(h.id).value if h.id in logs_by_habit else None,
+                    "frequency": h.frequency,
+                    "kind": h.kind,
+                    "target": h.target,
+                    "completed": logs_by_habit.get(h.id).completed if h.id in logs_by_habit else False,
+                    "value": (logs_by_habit.get(h.id).value if h.id in logs_by_habit else 0) or 0,
                 }
             )
         return result
@@ -101,14 +102,34 @@ def create_user(username: str, password_hash: str, display_name: Optional[str] =
 # ----- HABIT REPO --------
 
 # Создание привычки
-def create_habit(user_id: int, name: str, description: str = None, frequency: str = None) -> Habit:
+def create_habit(user_id: int, name: str, description: str = None, frequency: str = None, kind: str = "counter", target: Optional[int] = None) -> Habit:
     with get_session() as db:
-        habit = Habit(user_id=user_id, name=name, description=description, frequency=frequency)
+        habit = Habit(
+            user_id=user_id,
+            name=name,
+            description=description,
+            frequency=frequency,
+            kind=kind,
+            target=target,
+        )
         db.add(habit)
         db.commit()
         db.refresh(habit)
         return habit
 
+def archive_habit_for_user(user_id: int, habit_id: int) -> bool:
+    with get_session() as db:
+        habit = (
+            db.query(Habit)
+            .filter(Habit.id == habit_id, Habit.user_id == user_id)
+            .first()
+        )
+        if not habit:
+            return False
+        habit.is_active = False
+        db.commit()
+        return True
+    
 # ----- HABITLOG REPO -----
 
 # Создаем лог привычки 

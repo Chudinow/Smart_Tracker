@@ -34,6 +34,8 @@ class Habit(Base):
     frequency = Column(String, nullable=True)   # Как часто выполняется привычка
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False) # Отключение привычки (архив)
+    kind = Column(String, default="counter", nullable=False)  # "counter" | "checkbox"
+    target = Column(Integer, nullable=True) 
 
     owner = relationship("User", back_populates="habits")
     logs = relationship("HabitLog", back_populates="habit", cascade="all, delete-orphan")
@@ -56,7 +58,7 @@ class HabitLog(Base):
     date = Column(Date, nullable=False)        # Дата выполнения, только день
     completed = Column(Boolean, default=False, nullable=False)
     value = Column(Integer, nullable=True)    # Например количество минут/повторов
-    note = Column(Text, nullable=True)
+    note = Column(Text, nullable=True) 
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     habit = relationship("Habit", back_populates="logs")
