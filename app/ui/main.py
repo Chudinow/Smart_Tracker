@@ -2,12 +2,14 @@ from fastapi import FastAPI, Request, Form, Path
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path as PathlibPath
 from app.db.init_db import init_db
 from app.core.auth import register_user, authenticate_user  
 from starlette.middleware.sessions import SessionMiddleware
-from app.db.repo import get_daily_state_for_user, upsert_mood_entry, add_habit_log_safe, create_habit, archive_habit_for_user
+from app.db.repo import get_daily_state_for_user, upsert_mood_entry, add_habit_log_safe, create_habit, archive_habit_for_user, get_mood_entry, get_month_overview
+import calendar
+from fastapi import Query
 
 app = FastAPI(title="Work Life Balance UI")
 
@@ -115,7 +117,10 @@ async def app_home(request: Request):
     today = date.today()
 
     habits_raw = get_daily_state_for_user(user_id=user_id, day=today)
+    mood_today = get_mood_entry(user_id=user_id, day=today)
 
+    mood_score = mood_today.mood_score if mood_today else None
+    mood_note = mood_today.text_note if mood_today else ""
 
     habits = []
     for h in habits_raw:
@@ -151,6 +156,9 @@ async def app_home(request: Request):
             "habits_todo": habits_todo,
             "habits_done": habits_done,
             "flash_error": flash_error,
+            "mood_score": mood_score,
+            "mood_note": mood_note,
+            "mood_emoji": mood_emoji(mood_score),
             "insight": None,
         },
     )
@@ -185,6 +193,21 @@ async def habit_action(request: Request, habit_id: int = Path(...)):
     cur_completed = bool(found.get("completed", False))
     add_habit_log_safe(habit_id=habit_id, day=today, completed=(not cur_completed), value=None)
     return RedirectResponse("/app", status_code=303)
+
+def mood_emoji(score: int | None) -> str:
+    if score is None:
+        return "🙂"
+    if score <= 2:
+        return "😫"
+    if score <= 4:
+        return "😕"
+    if score <= 6:
+        return "😐"
+    if score <= 8:
+        return "🙂"
+    if score == 9:
+        return "😄"
+    return "🤩"
 
 
 @app.get("/logout")
@@ -237,8 +260,92 @@ async def register(
     return RedirectResponse("/app", status_code=303)
 
 @app.get("/history", response_class=HTMLResponse)
-async def history_stub(request: Request):
-    return HTMLResponse("История — в разработке")
+async def history_page(
+    request: Request,
+    year: int | None = Query(default=None),
+    month: int | None = Query(default=None),
+    day: int | None = Query(default=None),
+):
+    if not request.session.get("user_id"):
+        return RedirectResponse("/login", status_code=303)
+
+    user_id = request.session["user_id"]
+    today = date.today()
+
+    y = year or today.year
+    m = month or today.month
+
+    # выбранный день (если не передан — сегодня, но в рамках текущего месяца)
+    try:
+        selected = date(y, m, day) if day else date(y, m, min(today.day, calendar.monthrange(y, m)[1]))
+    except ValueError:
+        selected = date(y, m, 1)
+
+    first_day = date(y, m, 1)
+    last_day = date(y, m, calendar.monthrange(y, m)[1])
+
+    overview = get_month_overview(user_id=user_id, start=first_day, end=last_day)
+
+    # календарная сетка (недели)
+    cal = calendar.Calendar(firstweekday=0)  # 0 = Monday
+    weeks = []
+    for week in cal.monthdatescalendar(y, m):
+        row = []
+        for d in week:
+            in_month = (d.month == m)
+            info = overview.get(d, {"has_data": False, "percent": 0, "mood_score": None, "has_note": False, "warn": False, "fire": False})
+            row.append({
+                "date": d,
+                "day": d.day,
+                "in_month": in_month,
+                "is_today": (d == today),
+                "is_selected": (d == selected),
+                **info
+            })
+        weeks.append(row)
+
+    # правая панель: детали выбранного дня (пока просто просмотр)
+    habits_raw = get_daily_state_for_user(user_id=user_id, day=selected)
+    mood_today = get_mood_entry(user_id=user_id, day=selected)
+
+    habits = []
+    for h in habits_raw:
+        value = int(h.get("value") or 0)
+        target = h.get("target")
+        percent = 0
+        if target and int(target) > 0:
+            percent = int(min(100, (value / int(target)) * 100))
+
+        habits.append({
+            "id": h.get("habit_id"),
+            "name": h.get("habit_name") or "Без названия",
+            "frequency": h.get("frequency") or "",
+            "kind": h.get("kind") or "counter",
+            "value": value,
+            "target": target,
+            "percent": percent,
+            "completed": bool(h.get("completed", False)),
+        })
+
+    return templates.TemplateResponse(
+        "history.html",
+        {
+            "request": request,
+            "username": request.session.get("username", "user"),
+            "month_title": f"{RU_MONTHS[m-1].capitalize()} {y}",
+            "weeks": weeks,
+            "selected_date": selected,
+            "selected_human": human_ru(selected),
+            "mood_score": (mood_today.mood_score if mood_today else None),
+            "mood_note": (mood_today.text_note if mood_today else ""),
+            "mood_emoji": mood_emoji(mood_today.mood_score if mood_today else None),
+            "habits": habits,
+            "prev_link": f"/history?year={(first_day - timedelta(days=1)).year}&month={(first_day - timedelta(days=1)).month}",
+            "next_link": f"/history?year={(last_day + timedelta(days=1)).year}&month={(last_day + timedelta(days=1)).month}",
+            "today_link": f"/history?year={today.year}&month={today.month}&day={today.day}",
+        },
+    )
+
 
 @app.get("/analytics", response_class=HTMLResponse)
 async def analytics_stub(request: Request):

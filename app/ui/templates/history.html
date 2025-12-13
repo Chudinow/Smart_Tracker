@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Work Life Balance — Лента</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body class="wlb-auth-body wlb-app-body">
+    <!-- Декор фона: blob слева -->
+  <div class="wlb-left-decor" aria-hidden="true">
+    <img class="wlb-left-blob" src="/static/img/blob-left.png" alt="">
+  </div>
+  
+  <!-- Декор фона: пузыри -->
+  <div class="wlb-bubbles" aria-hidden="true">
+    <span class="b b1"></span>
+    <span class="b b2"></span>
+    <span class="b b3"></span>
+    <span class="b b4"></span>
+    <span class="b b5"></span>
+    <span class="b b6"></span>
+    <span class="b b7"></span>
+  </div>
+
+  <div class="wlb-app-shell">
+
+    <header class="wlb-topbar">
+      <div class="wlb-brand-title">WORK LIFE BALANCE</div>
+
+      <nav class="wlb-nav">
+        <a class="wlb-nav-link" href="/app">Мой день</a>
+        <a class="wlb-nav-link active" href="/history">Лента</a>
+        <a class="wlb-nav-link" href="/analytics">Аналитика</a>
+      </nav>
+
+      <div class="wlb-user">
+        <span>{{ username }}</span>
+        <a href="/logout">Выйти</a>
+      </div>
+    </header>
+
+    <main class="wlb-history">
+
+      <section class="wlb-day-header">
+        <h1>Лента</h1>
+      </section>
+
+      <section class="wlb-history-card">
+
+        <!-- LEFT: Calendar -->
+        <aside class="wlb-cal-card">
+          <div class="wlb-cal-head">
+            <a class="wlb-cal-nav" href="{{ prev_link }}" aria-label="Предыдущий месяц">‹</a>
+            <div class="wlb-cal-title">{{ month_title }}</div>
+            <a class="wlb-cal-nav" href="{{ next_link }}" aria-label="Следующий месяц">›</a>
+          </div>
+
+          <div class="wlb-cal-grid">
+            <div class="wlb-cal-dow">ПН</div><div class="wlb-cal-dow">ВТ</div><div class="wlb-cal-dow">СР</div><div class="wlb-cal-dow">ЧТ</div><div class="wlb-cal-dow">ПТ</div><div class="wlb-cal-dow">СБ</div><div class="wlb-cal-dow">ВС</div>
+
+            {% for week in weeks %}
+              {% for cell in week %}
+                {% set cls = "wlb-cal-day" %}
+                {% if not cell.in_month %}{% set cls = cls + " is-out" %}{% endif %}
+                {% if cell.is_today %}{% set cls = cls + " is-today" %}{% endif %}
+                {% if cell.is_selected %}{% set cls = cls + " is-selected" %}{% endif %}
+                {% if not cell.has_data and cell.in_month %}{% set cls = cls + " is-empty" %}{% endif %}
+
+                <a class="{{ cls }}"
+                   href="/history?year={{ cell.date.year }}&month={{ cell.date.month }}&day={{ cell.date.day }}"
+                   title="{{ cell.date }}">
+                  <div class="wlb-cal-num">{{ cell.day }}</div>
+
+                  <!-- индикатор прогресса -->
+                  <div class="wlb-cal-bar">
+                    <span class="wlb-cal-fill
+                      {% if cell.percent < 34 %} is-low
+                      {% elif cell.percent < 67 %} is-mid
+                      {% else %} is-high
+                      {% endif %}"
+                      style="width: {{ cell.percent }}%"></span>
+                  </div>
+
+                  <!-- мини-иконки -->
+                  <div class="wlb-cal-icons">
+                    {% if cell.mood_score %}
+                      <span class="wlb-cal-emo">{{ "😫" if cell.mood_score<=2 else ("😕" if cell.mood_score<=4 else ("😐" if cell.mood_score<=6 else ("🙂" if cell.mood_score<=8 else ("😄" if cell.mood_score==9 else "🤩")))) }}</span>
+                    {% endif %}
+                    {% if cell.has_note %}<span class="wlb-cal-ico">📝</span>{% endif %}
+                    {% if cell.warn %}<span class="wlb-cal-ico">⚠</span>{% endif %}
+                  </div>
+                </a>
+              {% endfor %}
+            {% endfor %}
+          </div>
+
+          <div class="wlb-cal-legend">
+            <div><span class="wlb-dot"></span> Полоска = % выполнения</div>
+            <div>🙂 = настроение • 📝 заметка • ⚠ пропуски</div>
+          </div>
+        </aside>
+
+        <!-- RIGHT: Selected day -->
+        <section class="wlb-day-card">
+          <div class="wlb-daycard-head">
+            <div class="wlb-daycard-title">{{ selected_human }}</div>
+            <a class="wlb-cal-btn" href="{{ today_link }}">Вернуться к сегодня</a>
+          </div>
+
+          <div class="wlb-daycard-block">
+            <div class="wlb-daycard-sub">Привычки</div>
+
+            <div class="wlb-daycard-habits">
+              {% for h in habits %}
+              <div class="wlb-daycard-habit">
+                <div class="wlb-daycard-hname">
+                  {{ h.name }}
+                  {% if h.frequency %}<div class="wlb-daycard-hmeta">{{ h.frequency }}</div>{% endif %}
+                </div>
+
+                <div class="wlb-daycard-hstat">
+                  {% if h.kind == "counter" and h.target %}
+                    <div class="wlb-daycard-count">{{ h.value }}/{{ h.target }}</div>
+                  {% else %}
+                    <div class="wlb-daycard-check">{{ "✓" if h.completed else "" }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+
+              {% if habits|length == 0 %}
+                <div class="wlb-empty">Нет привычек</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="wlb-daycard-block">
+            <div class="wlb-daycard-sub">Настроение: {% if mood_score %}{{ mood_score }}{% else %}—{% endif %}</div>
+
+            <div class="wlb-daycard-mood">
+              <div class="wlb-daycard-emoji">{{ mood_emoji }}</div>
+              <div class="wlb-daycard-note">
+                {% if mood_note %}
+                  {{ mood_note }}
+                {% else %}
+                  <span class="wlb-muted">Комментарий отсутствует…</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="wlb-daycard-foot">
+            <button class="wlb-mood-save" disabled>Сохранить (позже включим редактирование)</button>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+</body>
+</html>

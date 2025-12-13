@@ -1,9 +1,10 @@
 # app/db/repo.py
-from typing import Optional, List
+from typing import Optional
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from .connection import get_session
 from .models import User, Habit, HabitLog, MoodEntry
+from sqlalchemy import func
 from collections import defaultdict
 
 # ----- UTILS ---------
@@ -292,6 +293,14 @@ def upsert_mood_entry(user_id: int,
         db.refresh(entry)
         return entry
 
+def get_mood_entry(user_id: int, day: date) -> Optional[MoodEntry]:
+    with get_session() as db:
+        return (
+            db.query(MoodEntry)
+            .filter(MoodEntry.user_id == user_id, MoodEntry.date == day)
+            .first()
+        )
+    
 # ФУНКЦИИ ДЛЯ ML
 
 def get_mood_entries(user_id: int,
@@ -321,3 +330,78 @@ def update_mood_sentiment(entry_id: int,
         db.refresh(entry)
         return entry
 
+def get_month_overview(user_id: int, start: date, end: date) -> dict[date, dict]:
+    with get_session() as db:
+        habits = (
+            db.query(Habit.id, Habit.kind, Habit.target)
+            .filter(Habit.user_id == user_id, Habit.is_active == True)
+            .all()
+        )
+        habits_map = {h.id: (h.kind, int(h.target) if h.target else None) for h in habits}
+        total_habits = len(habits)
+
+        logs = (
+            db.query(HabitLog.habit_id, HabitLog.date, HabitLog.value, HabitLog.completed)
+            .join(Habit, Habit.id == HabitLog.habit_id)
+            .filter(
+                Habit.user_id == user_id,
+                Habit.is_active == True,
+                HabitLog.date >= start,
+                HabitLog.date <= end,
+            )
+            .all()
+        )
+
+        # day -> habit_id -> max_progress(0..1)
+        day_habit_max = defaultdict(dict)
+        by_day_any = set()
+
+        for habit_id, d, value, completed in logs:
+            by_day_any.add(d)
+            kind, target = habits_map.get(habit_id, ("checkbox", None))
+
+            if kind == "counter" and target:
+                v = int(value or 0)
+                progress = min(v / target, 1.0)
+            else:
+                progress = 1.0 if completed else 0.0
+
+            prev = day_habit_max[d].get(habit_id, 0.0)
+            if progress > prev:
+                day_habit_max[d][habit_id] = progress
+
+        moods = (
+            db.query(MoodEntry.date, MoodEntry.mood_score, MoodEntry.text_note)
+            .filter(
+                MoodEntry.user_id == user_id,
+                MoodEntry.date >= start,
+                MoodEntry.date <= end,
+            )
+            .all()
+        )
+        mood_by_day = {d: {"score": s, "note": (t or "")} for d, s, t in moods}
+
+        result = {}
+        d = start
+        while d <= end:
+            has_mood = d in mood_by_day
+            has_any = (d in by_day_any) or has_mood
+
+            # суммарный прогресс дня = сумма максимумов по привычкам
+            s = sum(day_habit_max.get(d, {}).values())
+            percent = int((s / total_habits) * 100) if total_habits > 0 else 0
+            percent = max(0, min(100, percent))  # на всякий
+
+            mood_score = mood_by_day.get(d, {}).get("score", None)
+            mood_note = mood_by_day.get(d, {}).get("note", "")
+
+            result[d] = {
+                "has_data": has_any,
+                "percent": percent,
+                "mood_score": mood_score,
+                "has_note": bool(mood_note.strip()),
+                "warn": has_any and total_habits > 0 and percent < 100,
+            }
+            d += timedelta(days=1)
+
+        return result
