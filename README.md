@@ -39,26 +39,27 @@
 ---
 
 ## Архитектура и структура проекта
+```text
 app/
-core/
-auth.py # регистрация/аутентификация, хеширование и т.п.
-db/
-connection.py # создание engine / SessionLocal
-init_db.py # инициализация БД (создание таблиц/проверки)
-models.py # ORM-модели: User, Habit, HabitLog, MoodEntry, ...
-repo.py # основная бизнес-логика и запросы (агрегации, расчёты)
-ui/
-main.py # FastAPI приложение + роуты страниц
-static/
-css/styles.css # стили
-img/ # декоративные картинки
-templates/
-login.html
-register.html
-dashboard.html # "Мой день"
-history.html # "Лента" (календарь)
-analytics.html # "Аналитика"
-
+  core/
+    auth.py # регистрация/аутентификация, хеширование и т.п.
+  db/
+    connection.py # создание engine / SessionLocal
+    init_db.py # инициализация БД (создание таблиц/проверки)
+    models.py # ORM-модели: User, Habit, HabitLog, MoodEntry, ...
+    repo.py # основная бизнес-логика и запросы (агрегации, расчёты)
+  ui/
+    main.py # FastAPI приложение + роуты страниц
+    static/
+      css/styles.css # стили
+      img/ # декоративные картинки
+    templates/
+      login.html
+      register.html
+      dashboard.html # "Мой день"
+      history.html # "Лента" (календарь)
+      analytics.html # "Аналитика"
+```
 ---
 
 ## Как это работает (в двух словах)
@@ -97,8 +98,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 Проект сделан в стиле “тонкие роуты + репозиторий + шаблоны”.
-
-macOS/Linux
+**macOS/Linux**
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -117,39 +117,43 @@ http://127.0.0.1:8000/ или http://127.0.0.1:8000/app
 ## База данных
 Используется SQLAlchemy ORM + SQLite (файл в проекте).
 
-Типовые сущности:
+**Типовые сущности:**
 
-User — пользователь
-Habit — привычка (тип checkbox/counter, target, активность)
-HabitLog — логи по привычкам (дата, значение/выполнено)
-MoodEntry — настроение (score + текст)
+`User` — пользователь
+`Habit` — привычка (тип checkbox/counter, target, активность)
+`HabitLog` — логи по привычкам (дата, значение/выполнено)
+`MoodEntry` — настроение (score + текст)
 
-“Миграции”
+**Миграции**
 
 Сейчас проект ближе к MVP: таблицы поднимаются через init_db.py (создание схемы при старте).
 Если проект станет больше — логично добавить Alembic и настоящие миграции.
 
 ## Календарь в “Ленте”: как считаются проценты и иконки
 
-Ключевая функция: get_month_overview(...) в app/db/repo.py.
+Ключевая функция: `get_month_overview(...)` в app/db/repo.py.
 
 Идея расчёта:
 Берём активные привычки пользователя (их число = total_habits)
 По логам за день считаем прогресс каждой привычки:
-counter: min(value/target, 1.0)
-checkbox: 1 или 0
+
+`counter: min(value/target, 1.0)
+checkbox: 1 или 0`
 
 Для дня суммируем прогрессы и переводим в проценты:
-percent = int((sum_progress / total_habits) * 100)
+
+`percent = int((sum_progress / total_habits) * 100)`
 
 Плюс подтягиваем MoodEntry и определяем:
-mood_score → emoji
+
+`mood_score → emoji
 has_note → 📝
-warn → ⚠ если есть данные, но выполнено < 100%
+warn → ⚠ если есть данные, но выполнено < 100%`
 
 Дальше шаблон history.html просто рисует:
-прогрессбар через style="--p: {{ cell.percent }}%"
-иконки через условия Jinja
+
+`прогрессбар через style="--p: {{ cell.percent }}%"
+иконки через условия Jinja`
 
 ## Аналитика и графики
 
@@ -161,14 +165,14 @@ warn → ⚠ если есть данные, но выполнено < 100%
 небольшой JS показывает тултип при наведении на точку
 
 ## Основные страницы
-
-/register — регистрация
-/login — вход
-/logout — выход
-/app — “Мой день”
-/history — “Лента” с календарём (параметры year/month/day)
-/analytics — аналитика (параметры period, tab)
-
+```text
+`/register` — регистрация
+`/login` — вход
+`/logout` — выход
+`/app` — “Мой день”
+`/history` — “Лента” с календарём (параметры year/month/day)
+`/analytics` — аналитика (параметры period, tab)
+```
 ## Частые проблемы
 
 1) VS Code подчёркивает Jinja как CSS-ошибки
