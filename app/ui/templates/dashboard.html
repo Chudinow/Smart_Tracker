@@ -80,7 +80,7 @@
                   {% if habit.kind == "counter" and habit.target %}
                     <div class="wlb-habit-count">{{ habit.value }}/{{ habit.target }}</div>
                     <div class="wlb-mini-progress">
-                      <div class="wlb-mini-progress-bar" style="width: {{ habit.percent }}%"></div>
+                      <div class="wlb-mini-progress-bar" style="--p: {{ habit.percent }}%"></div>
                     </div>
                   {% endif %}
                 </div>
@@ -131,7 +131,7 @@
                   {% if habit.kind == "counter" and habit.target %}
                     <div class="wlb-habit-count">{{ habit.value }}/{{ habit.target }}</div>
                     <div class="wlb-mini-progress">
-                      <div class="wlb-mini-progress-bar" style="width: {{ habit.percent }}%"></div>
+                      <div class="wlb-mini-progress-bar" style="--p: {{ habit.percent }}%"></div>
                     </div>
                   {% endif %}
                 </div>

@@ -15,10 +15,10 @@ app = FastAPI(title="Work Life Balance UI")
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key="CHANGE_ME_TO_SOMETHING_RANDOM",  # потом вынеси в env
+    secret_key="CHANGE_ME_TO_SOMETHING_RANDOM",  
     session_cookie="wlb_session",
     same_site="lax",
-    https_only=False,  # на проде True
+    https_only=False,  
 )
 
 BASE_DIR = PathlibPath(__file__).resolve().parent
@@ -40,13 +40,11 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 @app.on_event("startup")
 def on_startup() -> None:
-    # чтобы таблицы точно были
     init_db()
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    # редирект просто на /login
     return RedirectResponse("/login")
 
 
@@ -87,7 +85,6 @@ async def login(
             status_code=400,
         )
 
-    # Пока без настоящих сессий — просто простая страница "вы залогинились"
     request.session["user_id"] = user.id
     request.session["username"] = user.username
     return RedirectResponse("/app", status_code=303)
@@ -180,7 +177,6 @@ async def habit_action(request: Request, habit_id: int = Path(...)):
 
     kind = found.get("kind") or "counter"
 
-    # --- COUNTER: +1 ---
     if kind == "counter":
         cur_value = int(found.get("value") or 0)
         target = found.get("target")
@@ -189,7 +185,6 @@ async def habit_action(request: Request, habit_id: int = Path(...)):
         add_habit_log_safe(habit_id=habit_id, day=today, completed=completed, value=new_value)
         return RedirectResponse("/app", status_code=303)
 
-    # --- CHECKBOX: toggle completed ---
     cur_completed = bool(found.get("completed", False))
     add_habit_log_safe(habit_id=habit_id, day=today, completed=(not cur_completed), value=None)
     return RedirectResponse("/app", status_code=303)
@@ -341,7 +336,7 @@ async def analytics_page(
         _, y = xy(0, val)
         mood_y_ticks.append({"val": val, "y": round(y, 1)})
 
-    # подписи по X — ~7 штук, чтобы не было каши на 30/90
+    # подписи по X — ~7 штук
     mood_x_ticks = []
     if n > 0:
         max_labels = 7
