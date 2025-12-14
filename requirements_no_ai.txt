@@ -5,3 +5,4 @@ alembic==1.12.1
 python-multipart==0.0.6
 passlib[bcrypt]
 streamlit
+itsdangerous>=2.1

@@ -1397,6 +1397,8 @@ html, body {
   box-shadow: 0 12px 30px rgba(15,23,42,0.35);
 }
 
+.wlb-ana-bar-fill { width: var(--p, 0%); }
+
 /* === Analytics: habits tab === */
 .wlb-ana-habits-head{
   display:flex; align-items:flex-end; justify-content:space-between;
