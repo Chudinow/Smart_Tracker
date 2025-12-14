@@ -1,0 +1,56 @@
+# --- Python / venv ---
+venv/
+.venv/
+venv311/
+env/
+ENV/
+*.py[cod]
+__pycache__/
+*$py.class
+
+# --- Библиотеки / сборки ---
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# --- Кэш тестов и линтеров ---
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- IDE / редакторы ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Jupyter / ноутбуки ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- OS мусор ---
+.DS_Store
+Thumbs.db
+
+# --- База данных (локальная) ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Streamlit / временные файлы ---
+.streamlit/
+logs/
+*.log
+
+# --- Python / venv ---
+venv/
+venv311/
+env/
+ENV/
+.venv/
+.venv311/
+*.py[cod]
+__pycache__/
+*$py.class

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Work Life Balance — Вход</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="wlb-auth-body">
+
+<!-- ЛЕВЫЙ ДЕКОР -->
+<div class="wlb-left-decor" aria-hidden="true">
+    <img class="wlb-left-blob" src="/static/img/blob-left.png" alt="">
+    <span class="b b1"></span>
+    <span class="b b2"></span>
+    <span class="b b3"></span>
+</div>
+
+<div class="wlb-bottom-bubbles" aria-hidden="true">
+  <span class="bb bb1"></span>
+  <span class="bb bb2"></span>
+</div>
+
+<div class="wlb-auth-shell">
+    <div class="wlb-auth-inner">
+
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
+        <div class="wlb-auth-panel">
+            <div class="wlb-auth-panel-title">
+                Work Life Balance
+            </div>
+            <div class="wlb-auth-panel-sub">
+                Рады видеть вас снова!
+            </div>
+
+            <div class="wlb-auth-mode-tabs">
+                <a href="/login" class="wlb-auth-mode-tab active">Вход</a>
+                <a href="/register" class="wlb-auth-mode-tab">Регистрация</a>
+            </div>
+
+            {% if error %}
+                <div class="wlb-auth-alert error">
+                    {{ error }}
+                </div>
+            {% elif registered %}
+                <div class="wlb-auth-alert success">
+                    Аккаунт создан, теперь можно войти.
+                </div>
+            {% endif %}
+
+            <form method="post" class="wlb-auth-form">
+                <label class="wlb-auth-label">
+                    Логин
+                    <input class="wlb-auth-input"
+                           type="text"
+                           name="username"
+                           placeholder="Введите ваш логин"
+                           required>
+                </label>
+
+                <label class="wlb-auth-label">
+                    Пароль
+                    <input class="wlb-auth-input"
+                           type="password"
+                           name="password"
+                           placeholder="Введите ваш пароль"
+                           required>
+                </label>
+
+                <button type="submit" class="wlb-auth-submit">
+                    Войти
+                </button>
+            </form>
+        </div>
+        
+        <!-- ПРАВАЯ КАРТОЧКА -->
+        <div class="wlb-auth-hero-wrapper">
+            <div class="wlb-bubbles" aria-hidden="true">
+              <span class="b b4"></span>
+              <span class="b b5"></span>
+              <span class="b b6"></span>
+              <span class="b b7"></span>
+              <span class="b b1"></span>
+              <span class="b b2"></span>
+              <span class="b b3"></span>
+              <span class="b b4"></span>
+              <span class="b b5"></span>
+            </div>
+            <img src="/static/img/wlb-hero-v2.png" alt="Work Life Balance">
+        </div>
+
+    </div>
+</div>
+</body>
+</html>

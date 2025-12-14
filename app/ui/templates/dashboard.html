@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Work Life Balance — Мой день</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body class="wlb-auth-body wlb-app-body">
+    <!-- DECOR (без анимаций) -->
+  <div class="wlb-dashboard-decor" aria-hidden="true">
+    <img class="wlb-dashboard-blob" src="/static/img/blob-left.png" alt="">
+    <div class="wlb-dashboard-bubbles">
+      <span class="db db1"></span>
+      <span class="db db2"></span>
+      <span class="db db3"></span>
+      <span class="db db4"></span>
+      <span class="db db5"></span>
+    </div>
+  </div>
+
+  <div class="wlb-app-shell">
+
+    <!-- HEADER -->
+    <header class="wlb-topbar">
+      <div class="wlb-brand-title">WORK LIFE BALANCE</div>
+
+      <nav class="wlb-nav">
+        <a class="wlb-nav-link active" href="/app">Мой день</a>
+        <a class="wlb-nav-link" href="/history">Лента</a>
+        <a class="wlb-nav-link" href="/analytics">Аналитика</a>
+      </nav>
+
+      <div class="wlb-user">
+        <span>{{ username }}</span>
+        <a href="/logout">Выйти</a>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="wlb-day">
+
+      <!-- DAY HEADER -->
+      <section class="wlb-day-header">
+        <h1>Рады вас видеть, {{ username }}!</h1>
+      </section>
+
+      <!-- HABITS + RIGHT SIDEBAR GRID -->
+      <section class="wlb-dashboard-grid">
+      
+        <!-- LEFT: HABITS PANEL (как было) -->
+        <section class="wlb-habits-card">
+        
+          <div class="wlb-habits-head">
+            <h2 class="wlb-habits-title">Мой день</h2>
+            <div class="wlb-habits-date">Сегодня: {{ date_human }}</div>
+          </div>
+
+          <div class="wlb-habits-subtitle">Нужно выполнить, вы все сможете!</div>
+
+          {% if flash_error %}
+            <div class="wlb-flash error">{{ flash_error }}</div>
+          {% endif %}
+
+          <!-- СКРОЛЛ-КОНТЕЙНЕР -->
+          <div class="wlb-habits-scroll">
+          
+            <div class="wlb-habits-list">
+              {% for habit in habits_todo %}
+              <div class="wlb-habit-row">
+              
+                <div class="wlb-habit-info">
+                  <div class="wlb-habit-name">{{ habit.name }}</div>
+                  {% if habit.frequency %}
+                  <div class="wlb-habit-meta2">{{ habit.frequency }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="wlb-habit-progress">
+                  {% if habit.kind == "counter" and habit.target %}
+                    <div class="wlb-habit-count">{{ habit.value }}/{{ habit.target }}</div>
+                    <div class="wlb-mini-progress">
+                      <div class="wlb-mini-progress-bar" style="--p: {{ habit.percent }}%"></div>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="wlb-habit-actions">
+                  {% if habit.kind == "counter" %}
+                    <div class="wlb-action-group">
+                      <form method="post" action="/habit/{{ habit.id }}/dec">
+                        <button type="submit" class="wlb-action-btn minus" aria-label="Убавить -1">−</button>
+                      </form>
+                      <form method="post" action="/habit/{{ habit.id }}/log">
+                        <button type="submit" class="wlb-action-btn plus" aria-label="Добавить +1">+</button>
+                      </form>
+                    </div>
+                  {% else %}
+                    <form method="post" action="/habit/{{ habit.id }}/log">
+                      <button type="submit" class="wlb-action-btn check" aria-label="Отметить выполненным"></button>
+                    </form>
+                  {% endif %}
+
+                  <form method="post" action="/habit/{{ habit.id }}/archive">
+                    <button type="submit" class="wlb-action-btn archive" aria-label="Архивировать">×</button>
+                  </form>
+                </div>
+
+              </div>
+              {% endfor %}
+
+              {% if habits_todo|length == 0 %}
+                <div class="wlb-empty">На сегодня всё выполнено 👌</div>
+              {% endif %}
+            </div>
+
+            <div class="wlb-habits-done-title">Готово!</div>
+
+            <div class="wlb-habits-list done">
+              {% for habit in habits_done %}
+              <div class="wlb-habit-row done">
+              
+                <div class="wlb-habit-info">
+                  <div class="wlb-habit-name">{{ habit.name }}</div>
+                  {% if habit.frequency %}
+                  <div class="wlb-habit-meta2">{{ habit.frequency }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="wlb-habit-progress">
+                  {% if habit.kind == "counter" and habit.target %}
+                    <div class="wlb-habit-count">{{ habit.value }}/{{ habit.target }}</div>
+                    <div class="wlb-mini-progress">
+                      <div class="wlb-mini-progress-bar" style="--p: {{ habit.percent }}%"></div>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="wlb-habit-actions">
+                  {% if habit.kind == "counter" %}
+                    <div class="wlb-action-group">
+                      <form method="post" action="/habit/{{ habit.id }}/dec">
+                        <button type="submit" class="wlb-action-btn minus" aria-label="Убавить -1">−</button>
+                      </form>
+                      <form method="post" action="/habit/{{ habit.id }}/log">
+                        <button type="submit" class="wlb-action-btn plus" aria-label="Добавить +1">+</button>
+                      </form>
+                    </div>
+                  {% else %}
+                    <form method="post" action="/habit/{{ habit.id }}/log">
+                      <button type="submit" class="wlb-action-btn check done" aria-label="Снять отметку"></button>
+                    </form>
+                  {% endif %}
+
+                  <form method="post" action="/habit/{{ habit.id }}/archive">
+                    <button type="submit" class="wlb-action-btn archive" aria-label="Архивировать">×</button>
+                  </form>
+                </div>
+
+              </div>
+              {% endfor %}
+            </div>
+
+          </div>
+
+          <!-- Добавление привычки -->
+          <form class="wlb-habit-addbar" method="post" action="/habit/new" id="habitAddForm">
+            <input name="name" placeholder="Новая привычка" required>
+
+            <select name="kind" id="habitKind">
+              <option value="counter">Счётчик</option>
+              <option value="checkbox">Чекбокс</option>
+            </select>
+
+            <div id="targetWrap">
+              <input name="target" id="habitTarget" type="number" min="1" placeholder="Цель (3 раза в день)">
+            </div>
+
+            <input name="frequency" id="habitFrequency" placeholder="Подпись">
+            <button type="submit">Добавить</button>
+          </form>
+
+          <script>
+            (function () {
+              const kind = document.getElementById('habitKind');
+              const targetWrap = document.getElementById('targetWrap');
+              const targetInput = document.getElementById('habitTarget');
+
+              function sync() {
+                const isCheckbox = kind.value === 'checkbox';
+                targetWrap.style.display = isCheckbox ? 'none' : '';
+                targetInput.disabled = isCheckbox;
+                targetInput.required = !isCheckbox;
+                if (isCheckbox) targetInput.value = '';
+              }
+
+              kind.addEventListener('change', sync);
+              sync();
+            })();
+          </script>
+
+        </section>
+
+        <!-- RIGHT: MOOD + INSIGHT PANELS -->
+        <aside class="wlb-right-col">
+        
+          <section class="wlb-side-card wlb-mood-card">
+            <div class="wlb-side-title">Моё настроение</div>
+
+            <div class="wlb-mood-face" id="moodFace">{{ mood_emoji }}</div>
+
+            <form method="post" action="/mood" class="wlb-mood-form" id="moodForm">
+              <input type="hidden" name="mood" id="moodValue" value="{{ mood_score or '' }}">
+
+              <div class="wlb-mood-scale" id="moodScale">
+                {% for i in range(1,11) %}
+                  <button
+                    type="button"
+                    data-mood="{{ i }}"
+                    class="{% if mood_score == i %}active{% endif %}"
+                    aria-pressed="{% if mood_score == i %}true{% else %}false{% endif %}"
+                  >{{ i }}</button>
+                {% endfor %}
+              </div>
+
+              <textarea name="note" placeholder="Почему так? (необязательно)">{{ mood_note or "" }}</textarea>
+
+              <button type="submit" class="wlb-mood-save" id="moodSave">Сохранить</button>
+            </form>
+
+            <script>
+              (function () {
+                const scale = document.getElementById('moodScale');
+                const buttons = scale.querySelectorAll('button[data-mood]');
+                const moodValue = document.getElementById('moodValue');
+                const face = document.getElementById('moodFace');
+                const save = document.getElementById('moodSave');
+
+                function emojiFor(n) {
+                  n = Number(n);
+                  if (!n) return "🙂";
+                  if (n <= 2) return "😫";
+                  if (n <= 4) return "😕";
+                  if (n <= 6) return "😐";
+                  if (n <= 8) return "🙂";
+                  if (n === 9) return "😄";
+                  return "🤩";
+                }
+
+                function setActive(n) {
+                  moodValue.value = String(n);
+                  face.textContent = emojiFor(n);
+
+                  buttons.forEach(btn => {
+                    const isActive = Number(btn.dataset.mood) === Number(n);
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                  });
+
+                  save.disabled = false;
+                }
+
+                // клик по цифре
+                buttons.forEach(btn => {
+                  btn.addEventListener('click', () => setActive(btn.dataset.mood));
+                });
+
+                // если настроение уже есть в БД — подсветим и включим кнопку
+                if (moodValue.value) {
+                  setActive(moodValue.value);
+                } else {
+                  save.disabled = true; // пока не выбрали цифру
+                }
+              })();
+            </script>
+          </section>
+
+          <section class="wlb-side-card wlb-insight-card">
+            <div class="wlb-side-title">Инсайт дня</div>
+            <p class="wlb-insight-text">{{ insight or "Мы только начинаем изучать твои привычки" }}</p>
+          </section>
+
+        </aside>
+
+      </section>
+
+    </main>
+  </div>
+
+</body>
+</html>
