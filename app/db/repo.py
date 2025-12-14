@@ -405,3 +405,295 @@ def get_month_overview(user_id: int, start: date, end: date) -> dict[date, dict]
             d += timedelta(days=1)
 
         return result
+    
+def _habit_progress(kind: str, target: int | None, value: int | None, completed: bool) -> float:
+    """Прогресс по одной записи лога в диапазоне 0..1"""
+    if kind == "counter" and target and target > 0:
+        v = int(value or 0)
+        return min(v / target, 1.0)
+    return 1.0 if completed else 0.0
+
+
+def get_analytics_summary(user_id: int, start: date, end: date) -> dict:
+    """
+    MVP-аналитика на период:
+    - среднее настроение
+    - лучший/худший день
+    - % выполнения (по активным привычкам)
+    - "главная привычка" (самая выполненная за период)
+    - данные для простого графика настроения
+    """
+    with get_session() as db:
+        # активные привычки
+        habits = (
+            db.query(Habit.id, Habit.name, Habit.kind, Habit.target)
+            .filter(Habit.user_id == user_id, Habit.is_active == True)
+            .all()
+        )
+        habits_map = {h.id: {"name": h.name, "kind": h.kind, "target": int(h.target) if h.target else None} for h in habits}
+        habit_ids = list(habits_map.keys())
+
+        days = []
+        cur = start
+        while cur <= end:
+            days.append(cur)
+            cur += timedelta(days=1)
+
+        # логи привычек за период (ТОЛЬКО активные привычки)
+        logs = []
+        if habit_ids:
+            logs = (
+                db.query(HabitLog.habit_id, HabitLog.date, HabitLog.value, HabitLog.completed)
+                .join(Habit, Habit.id == HabitLog.habit_id)
+                .filter(
+                    Habit.user_id == user_id,
+                    Habit.is_active == True,
+                    HabitLog.date >= start,
+                    HabitLog.date <= end,
+                )
+                .all()
+            )
+
+        # day -> habit_id -> max_progress
+        day_habit_max = defaultdict(dict)
+        for habit_id, d, value, completed in logs:
+            meta = habits_map.get(habit_id)
+            if not meta:
+                continue
+            progress = _habit_progress(meta["kind"], meta["target"], value, completed)
+            prev = day_habit_max[d].get(habit_id, 0.0)
+            if progress > prev:
+                day_habit_max[d][habit_id] = progress
+
+        total_possible = len(days) * max(len(habit_ids), 1)
+        total_done = 0.0
+
+        # для "главной привычки"
+        habit_sum = defaultdict(float)
+
+        for d in days:
+            for hid in habit_ids:
+                p = day_habit_max[d].get(hid, 0.0)
+                total_done += p
+                habit_sum[hid] += p
+
+        completion_percent = 0
+        if habit_ids and total_possible > 0:
+            completion_percent = int(round((total_done / (len(days) * len(habit_ids))) * 100))
+
+        top_habit = None
+        if habit_ids:
+            top_id = max(habit_ids, key=lambda hid: habit_sum.get(hid, 0.0))
+            top_habit = {
+                "name": habits_map[top_id]["name"],
+                "score": habit_sum.get(top_id, 0.0),   # сумма прогресса за период
+                "max": float(len(days)),               # максимум (если каждый день 1.0)
+            }
+
+        # настроение
+        mood_entries = (
+            db.query(MoodEntry.date, MoodEntry.mood_score)
+            .filter(
+                MoodEntry.user_id == user_id,
+                MoodEntry.date >= start,
+                MoodEntry.date <= end,
+            )
+            .order_by(MoodEntry.date)
+            .all()
+        )
+
+        mood_by_day = {d: s for d, s in mood_entries if s is not None}
+
+        scores = [s for s in mood_by_day.values() if s is not None]
+        avg_mood = round(sum(scores) / len(scores), 2) if scores else None
+
+        best_day = None
+        worst_day = None
+        if scores:
+            best_date = max(mood_by_day.keys(), key=lambda d: mood_by_day[d])
+            worst_date = min(mood_by_day.keys(), key=lambda d: mood_by_day[d])
+            best_day = {"date": best_date, "score": mood_by_day[best_date]}
+            worst_day = {"date": worst_date, "score": mood_by_day[worst_date]}
+
+        # серия для графика настроения (по всем дням периода)
+        mood_series = [{"date": d, "score": mood_by_day.get(d)} for d in days]
+
+        return {
+            "start": start,
+            "end": end,
+            "days_count": len(days),
+            "habits_count": len(habit_ids),
+            "completion_percent": completion_percent,
+            "top_habit": top_habit,
+            "avg_mood": avg_mood,
+            "best_day": best_day,
+            "worst_day": worst_day,
+            "mood_series": mood_series,
+        }
+
+def get_habits_breakdown(user_id: int, start: date, end: date) -> list[dict]:
+    """
+    Разбор по привычкам за период без серий:
+    - percent: средний прогресс (0..100)
+    - done: выполнено (для checkbox: дней; для counter: суммарно/цель)
+    - misses: пропуски (дни с прогрессом 0)
+    - avg: среднее в день (для counter: avg/target)
+    """
+    with get_session() as db:
+        habits = (
+            db.query(Habit.id, Habit.name, Habit.kind, Habit.target)
+            .filter(Habit.user_id == user_id, Habit.is_active == True)
+            .all()
+        )
+        if not habits:
+            return []
+
+        days_count = (end - start).days + 1
+        habit_ids = [h.id for h in habits]
+        habits_map = {
+            h.id: {
+                "name": h.name,
+                "kind": h.kind or "counter",
+                "target": int(h.target) if h.target else None,
+            }
+            for h in habits
+        }
+
+        logs = (
+            db.query(HabitLog.habit_id, HabitLog.date, HabitLog.value, HabitLog.completed)
+            .join(Habit, Habit.id == HabitLog.habit_id)
+            .filter(
+                Habit.user_id == user_id,
+                Habit.is_active == True,
+                HabitLog.date >= start,
+                HabitLog.date <= end,
+                HabitLog.habit_id.in_(habit_ids),
+            )
+            .all()
+        )
+
+        # habit_id -> date -> (value, completed)
+        by_habit_day = defaultdict(dict)
+        for hid, d, value, completed in logs:
+            by_habit_day[hid][d] = (int(value or 0), bool(completed))
+
+        result = []
+
+        for hid in habit_ids:
+            meta = habits_map[hid]
+            kind = meta["kind"]
+            target = meta["target"]
+
+            progress_sum = 0.0
+            done_days = 0
+            misses = 0
+            sum_value = 0
+
+            best = {"date": None, "progress": -1.0}
+            worst = {"date": None, "progress": 2.0}
+
+            for i in range(days_count):
+                d = start + timedelta(days=i)
+                value, completed = by_habit_day[hid].get(d, (0, False))
+
+                p = _habit_progress(kind, target, value, completed)  # 0..1
+                progress_sum += p
+
+                if p >= 1.0:
+                    done_days += 1
+                if p <= 0.0:
+                    misses += 1
+
+                if kind == "counter":
+                    sum_value += int(value or 0)
+
+                if p > best["progress"]:
+                    best = {"date": d, "progress": p}
+                if p < worst["progress"]:
+                    worst = {"date": d, "progress": p}
+
+            percent = int(round((progress_sum / max(days_count, 1)) * 100))
+            percent = max(0, min(100, percent))
+
+            if kind == "counter" and target and target > 0:
+                goal_total = days_count * target
+                done_text = f"{sum_value}/{goal_total}"
+                avg_per_day = round(sum_value / max(days_count, 1), 1)
+                avg_text = f"{avg_per_day}/{target}"
+            else:
+                done_text = f"{done_days}/{days_count}"
+                avg_text = None
+
+            result.append(
+                {
+                    "id": hid,
+                    "name": meta["name"],
+                    "kind": kind,
+                    "target": target,
+                    "percent": percent,
+                    "done_text": done_text,
+                    "misses": misses,
+                    "avg_text": avg_text,
+                    "best_date": best["date"],
+                    "worst_date": worst["date"],
+                }
+            )
+
+        # сортировка: по выполнению (по убыванию)
+        result.sort(key=lambda x: x["percent"], reverse=True)
+        return result
+
+def get_mood_breakdown(user_id: int, start: date, end: date) -> dict:
+    """
+    Настроение за период:
+    - avg: среднее
+    - best/worst: лучший/худший день (дата, score, note)
+    - dist: распределение 1-3 / 4-6 / 7-10
+    - notes: заметки (дата, score, note) — последние 10
+    """
+    with get_session() as db:
+        rows = (
+            db.query(MoodEntry.date, MoodEntry.mood_score, MoodEntry.text_note)
+            .filter(
+                MoodEntry.user_id == user_id,
+                MoodEntry.date >= start,
+                MoodEntry.date <= end,
+            )
+            .order_by(MoodEntry.date)
+            .all()
+        )
+
+        # только дни, где есть оценка
+        scored = [(d, int(s), (t or "")) for d, s, t in rows if s is not None]
+        scores = [s for _, s, _ in scored]
+
+        avg = round(sum(scores) / len(scores), 2) if scores else None
+
+        best = None
+        worst = None
+        if scored:
+            best_d, best_s, best_t = max(scored, key=lambda x: x[1])
+            worst_d, worst_s, worst_t = min(scored, key=lambda x: x[1])
+            best = {"date": best_d, "score": best_s, "note": best_t}
+            worst = {"date": worst_d, "score": worst_s, "note": worst_t}
+
+        low = sum(1 for s in scores if 1 <= s <= 3)
+        mid = sum(1 for s in scores if 4 <= s <= 6)
+        high = sum(1 for s in scores if 7 <= s <= 10)
+        total = len(scores)
+
+        # заметки (берём только непустые, показываем свежие)
+        notes = []
+        for d, s, t in reversed(scored):
+            if t.strip():
+                notes.append({"date": d, "score": s, "note": t})
+            if len(notes) >= 10:
+                break
+
+        return {
+            "avg": avg,
+            "best": best,
+            "worst": worst,
+            "dist": {"low": low, "mid": mid, "high": high, "total": total},
+            "notes": notes,
+        }

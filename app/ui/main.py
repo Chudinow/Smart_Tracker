@@ -7,7 +7,7 @@ from pathlib import Path as PathlibPath
 from app.db.init_db import init_db
 from app.core.auth import register_user, authenticate_user  
 from starlette.middleware.sessions import SessionMiddleware
-from app.db.repo import get_daily_state_for_user, upsert_mood_entry, add_habit_log_safe, create_habit, archive_habit_for_user, get_mood_entry, get_month_overview
+from app.db.repo import get_daily_state_for_user, upsert_mood_entry, add_habit_log_safe, create_habit, archive_habit_for_user, get_mood_entry, get_month_overview, get_analytics_summary, get_habits_breakdown, get_mood_breakdown
 import calendar
 from fastapi import Query
 
@@ -259,6 +259,128 @@ async def register(
 
     return RedirectResponse("/app", status_code=303)
 
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics_page(
+    request: Request,
+    period: int = Query(7),
+    tab: str = Query("stats"),
+):
+    if not request.session.get("user_id"):
+        return RedirectResponse("/login", status_code=303)
+
+    user_id = request.session["user_id"]
+    username = request.session.get("username", "user")
+
+    # нормализуем period и tab
+    if period not in (7, 30, 90):
+        period = 7
+    if tab not in ("stats", "habits", "mood"):
+        tab = "stats"
+
+    end = date.today()
+    start = end - timedelta(days=period - 1)
+
+    summary = get_analytics_summary(user_id=user_id, start=start, end=end)
+    habits_breakdown = get_habits_breakdown(user_id=user_id, start=start, end=end) if tab == "habits" else []
+
+    mood_breakdown = get_mood_breakdown(user_id=user_id, start=start, end=end) if tab == "mood" else None
+
+    if mood_breakdown:
+        if mood_breakdown.get("best"):
+            mood_breakdown["best"]["emoji"] = mood_emoji(mood_breakdown["best"]["score"])
+        if mood_breakdown.get("worst"):
+            mood_breakdown["worst"]["emoji"] = mood_emoji(mood_breakdown["worst"]["score"])
+        for n in mood_breakdown.get("notes", []):
+            n["emoji"] = mood_emoji(n["score"])
+
+    # --- ГРАФИК НАСТРОЕНИЯ: сегменты + точки + подписи осей ---
+    series = summary["mood_series"]
+
+    import math
+    W, H = 640, 220
+    PAD_L, PAD_R, PAD_T, PAD_B = 34, 10, 10, 18
+    plot_w = W - PAD_L - PAD_R
+    plot_h = H - PAD_T - PAD_B
+    n = len(series)
+
+    def xy(i: int, score: int):
+        x = PAD_L + (i * plot_w / max(n - 1, 1))
+        y = PAD_T + plot_h - ((score - 1) / 9) * plot_h
+        return x, y
+
+    mood_segments: list[str] = []
+    mood_points: list[dict] = []
+    cur_seg: list[str] = []
+
+    for i, it in enumerate(series):
+        d = it["date"]
+        score = it["score"]
+        if score is None:
+            if cur_seg:
+                mood_segments.append(" ".join(cur_seg))
+                cur_seg = []
+            continue
+
+        x, y = xy(i, int(score))
+        cur_seg.append(f"{x:.1f},{y:.1f}")
+        mood_points.append(
+            {
+                "x": round(x, 1),
+                "y": round(y, 1),
+                "date_full": d.strftime("%d.%m.%Y"),
+                "score": int(score),
+            }
+        )
+
+    if cur_seg:
+        mood_segments.append(" ".join(cur_seg))
+
+    # подписи по Y (10..2)
+    mood_y_ticks = []
+    for val in (10, 8, 6, 4, 2):
+        _, y = xy(0, val)
+        mood_y_ticks.append({"val": val, "y": round(y, 1)})
+
+    # подписи по X — ~7 штук, чтобы не было каши на 30/90
+    mood_x_ticks = []
+    if n > 0:
+        max_labels = 7
+        step = 1 if n <= max_labels else math.ceil((n - 1) / (max_labels - 1))
+        idxs = list(range(0, n, step))
+        if (n - 1) not in idxs:
+            idxs.append(n - 1)
+        for i in idxs:
+            d = series[i]["date"]
+            x = PAD_L + (i * plot_w / max(n - 1, 1))
+            mood_x_ticks.append({"x": round(x, 1), "label": d.strftime("%d.%m")})
+
+    mood_chart = {
+        "w": W, "h": H,
+        "pad_l": PAD_L, "pad_r": PAD_R, "pad_t": PAD_T, "pad_b": PAD_B,
+        "x1": PAD_L, "x2": W - PAD_R,
+        "y_bottom": H - PAD_B,
+    }
+
+    return templates.TemplateResponse(
+        "analytics.html",
+        {
+            "request": request,
+            "username": username,
+
+            "period": period,
+            "tab": tab,
+
+            "mood_breakdown": mood_breakdown,
+            "habits_breakdown": habits_breakdown,
+            "summary": summary,
+            "mood_segments": mood_segments,
+            "mood_points": mood_points,
+            "mood_y_ticks": mood_y_ticks,
+            "mood_x_ticks": mood_x_ticks,
+            "mood_chart": mood_chart,
+        },
+    )
+
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(
     request: Request,
@@ -345,11 +467,6 @@ async def history_page(
             "today_link": f"/history?year={today.year}&month={today.month}&day={today.day}",
         },
     )
-
-
-@app.get("/analytics", response_class=HTMLResponse)
-async def analytics_stub(request: Request):
-    return HTMLResponse("Аналитика — в разработке")
 
 @app.post("/habit/{habit_id}/dec")
 async def habit_decrement(request: Request, habit_id: int = Path(...)):

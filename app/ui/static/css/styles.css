@@ -1215,6 +1215,231 @@ html, body {
 .wlb-cal-fill.is-mid { background: rgba(255, 215, 120, 0.95); }
 .wlb-cal-fill.is-high { background: rgba(140, 255, 200, 0.95); }
 
+/* === ANALYTICS === */
+.wlb-analytics-card{
+  display:flex;
+  gap:18px;
+  padding:18px;
+  border-radius:18px;
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+.wlb-ana-sidebar{
+  width:260px;
+  flex:0 0 260px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.wlb-ana-box{
+  padding:14px;
+  border-radius:16px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
+.wlb-ana-box-title{
+  font-weight:700;
+  margin-bottom:10px;
+  opacity:.95;
+}
+
+.wlb-ana-period{
+  display:flex;
+  gap:10px;
+}
+
+.wlb-ana-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 10px;
+  min-width:44px;
+  border-radius:12px;
+  text-decoration:none;
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+  color:#fff;
+  opacity:.9;
+}
+
+.wlb-ana-pill.active{
+  background: rgba(255,255,255,0.18);
+  opacity:1;
+}
+
+.wlb-ana-tab{
+  display:block;
+  padding:12px 12px;
+  border-radius:14px;
+  text-decoration:none;
+  margin-top:10px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+  color:#fff;
+  opacity:.9;
+}
+
+.wlb-ana-tab.active{
+  background: rgba(255,255,255,0.16);
+  opacity:1;
+}
+
+.wlb-ana-main{
+  flex:1;
+  min-width:0;
+}
+
+.wlb-ana-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr 320px;
+  grid-template-rows: auto 1fr;
+  gap:14px;
+}
+
+.wlb-ana-kpi{
+  padding:16px;
+  border-radius:16px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
+.wlb-ana-kpi-title{ font-weight:700; opacity:.95; margin-bottom:10px; }
+.wlb-ana-kpi-value{ font-weight:800; font-size:24px; }
+.wlb-ana-kpi-value.big{ font-size:42px; line-height:1.0; margin-top:6px; }
+.wlb-ana-kpi-sub{ margin-top:10px; opacity:.85; }
+.wlb-ana-kpi-emoji{ font-size:40px; margin:6px 0; }
+
+.wlb-ana-chart{
+  grid-column: 1 / span 3;
+  padding:16px;
+  border-radius:16px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+  min-height:280px;
+}
+
+.wlb-ana-chart-title{ font-weight:700; opacity:.95; margin-bottom:12px; }
+.wlb-ana-svg{ width:100%; height:220px; display:block; opacity:.9; }
+
+.wlb-ana-summary{
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  padding:16px;
+  border-radius:16px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
+.wlb-ana-summary-title{ font-weight:800; margin-bottom:10px; }
+.wlb-ana-summary-text{ opacity:.9; line-height:1.35; }
+
+.wlb-ana-empty{
+  opacity:.75;
+  padding:14px;
+}
+
+.wlb-ana-placeholder{
+  padding:18px;
+  border-radius:16px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+
+.wlb-ana-placeholder-title{
+  font-weight:800;
+  margin-bottom:10px;
+}
+
+/* === Analytics chart improvements === */
+.wlb-ana-chart-wrap{ position: relative; }
+
+.wlb-ana-grid line{
+  stroke: rgba(255,255,255,0.12);
+  stroke-width: 1;
+}
+
+.wlb-ana-ylabels text,
+.wlb-ana-xlabels text{
+  fill: rgba(255,255,255,0.70);
+  font-size: 11px;
+  user-select: none;
+}
+
+.wlb-ana-line{
+  stroke: rgba(255,255,255,.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wlb-ana-dot{
+  fill: rgba(255,255,255,0.92);
+  stroke: rgba(15,23,42,0.25);
+  stroke-width: 1;
+  opacity: .9;
+  cursor: pointer;
+}
+.wlb-ana-dot:hover{ opacity: 1; }
+
+.wlb-ana-tooltip{
+  position: absolute;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(20,20,40,0.45);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 12px 30px rgba(15,23,42,0.35);
+}
+
+/* === Analytics: habits tab === */
+.wlb-ana-habits-head{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  margin-bottom: 12px;
+}
+.wlb-ana-habits-title{ font-weight: 700; font-size: 16px; }
+.wlb-ana-habits-list{ display:flex; flex-direction:column; gap:12px; }
+
+.wlb-ana-habit-card{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.08);
+  padding: 14px;
+}
+
+.wlb-ana-habit-top{ display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.wlb-ana-habit-name{ font-weight:700; }
+.wlb-ana-habit-percent{ font-weight:800; }
+
+.wlb-ana-bar{
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.10);
+  overflow:hidden;
+  margin: 10px 0 10px;
+}
+.wlb-ana-bar-fill{
+  display:block;
+  height: 100%;
+  background: rgba(255,255,255,0.75);
+}
+
+.wlb-ana-habit-meta{
+  display:flex;
+  gap: 14px;
+  flex-wrap:wrap;
+  font-size: 13px;
+  opacity: 0.95;
+}
+.wlb-ana-habit-foot{ margin-top: 8px; font-size: 12px; opacity: 0.75; }
+
+
 @media (max-width: 980px){
   .wlb-history-card{ grid-template-columns: 1fr; }
 }
