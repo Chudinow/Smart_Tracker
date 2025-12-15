@@ -421,7 +421,7 @@ async def history_page(
             })
         weeks.append(row)
 
-    # правая панель: детали выбранного дня (пока просто просмотр)
+    # правая панель: детали выбранного дня 
     habits_raw = get_daily_state_for_user(user_id=user_id, day=selected)
     mood_today = get_mood_entry(user_id=user_id, day=selected)
 
